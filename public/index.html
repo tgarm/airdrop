@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
+    </head>
+
+    <body>
+        <div v-scope>
+            <div class="container">
+              <div class="box" v-if="waddr">
+                  <label class="label">Address</label>
+                  <div class="control">
+                      <input class="input" type="text" disabled v-model="waddr">
+                  </div>
+                  <div v-if="chainId=='0x1336'">
+                      <label class="label"></label>
+                      <div class="control">
+                          <button class="button is-primary" @click="airdrop">Airdrop</button>
+                      </div>
+                  </div>
+                  <div v-else>
+                      <div class="notification is-primary">
+                          <p>Wrong network</p>
+                          <button @click="switchNet" class="button is-warning">Switch to Venidium Testnet</button>
+                      </div>
+                  </div>
+              </div>
+              <button v-else @click="connect" class="button is-primary">Connect Wallet</button>
+            </div>
+        </div>
+        <script src="https://unpkg.com/petite-vue"></script>
+        <script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
+        <script>
+          const ethereum = window.ethereum
+          PetiteVue.createApp({
+            waddr: false,
+            chainId: false,
+            initialized: false,
+            async connect(){
+                if (typeof ethereum !== 'undefined') {
+                    await this.initialize()
+                    const user = await ethereum.request({ method:'eth_requestAccounts' })
+                    this.chainId = await ethereum.request({ method:'eth_chainId' })
+                    if(user&&user[0]){
+                        this.waddr = user[0]
+                    }
+                    console.log('connect done')
+                }
+            },
+            async initialize(){
+                if(!this.initialized){
+                    this.initialized = true
+                    const root = this
+                    console.log('initialize')
+                    ethereum.on('connect', async (cinfo)=>{
+                        console.log('connect-info', cinfo)
+                        if(!root.chainId){
+                            root.chainId = cinfo.chainId
+                        }
+                        if(!root.waddr){
+                            const user = await ethereum.request({ method:'eth_requestAccounts' })
+                            if(user&&user[0]){
+                                root.waddr = user[0]
+                            }
+                        }
+                    })
+                    ethereum.on('disconnect', ()=>{
+                        console.log('disconnected')
+                        root.waddr = false
+                        root.chainId = false
+                    })
+ 
+                    ethereum.on('accountsChanged', (accounts)=>{
+                       if(accounts.length>0){
+                           root.waddr = accounts[0]
+                       }else{
+                           root.waddr = false
+                       }
+                    })
+                    ethereum.on('chainChanged', async (chainId)=>{
+                        if(chainId!=root.chainId){
+                            root.chainId = chainId
+                        }
+                    })
+                }
+            },
+            async addNet(){
+                try {
+                    const res = await ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params:[{
+                            chainId: '0x1336',
+                            chainName: 'Venidium EVM Testnet',
+                            rpcUrls: [
+                                "https://rpc-evm-testnet.venidium.io"
+                            ],
+                            nativeCurrency:{
+                                name: "Venidium",
+                                symbol: "XVM",
+                                decimals: 18
+                            },
+                            blockExplorerUrls:[
+                                "https://evm-testnet.venidiumexplorer.com"
+                            ]
+                        }]
+                    })
+                }catch(e){
+                    return false
+                }
+                return true
+            },
+            async switchNet(){
+                try {
+                    const res = await ethereum.request({method: 'wallet_switchEthereumChain', 
+                        params:[{chainId:'0x1336'}]})
+                }catch(e){
+                    if('code' in e && e.code==4902){
+                        if(await this.addNet()){
+                            await this.switchNet()
+                        }
+                    }else{
+                        console.log('error', e)
+                    }
+                }
+            },
+            async airdrop(){
+                let xhr = new XMLHttpRequest();
+                xhr.open("POST", "/airdrop");
+                xhr.setRequestHeader("Accept", "application/json");
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.onload = () => {
+                    console.log(xhr.responseText);
+                }
+                const data = {
+                    addr: this.waddr,
+                    chain: this.chainId
+                }
+                xhr.send(JSON.stringify(data));
+            }
+          }).mount()
+          function connected(info){
+              console.log('connect info', info)
+          }
+          ethereum.on('connect', connected)
+        </script>
+    </body>
+</html>

@@ -1,17 +1,18 @@
 {
-  "name": "express-hello-world",
+  "name": "airdrop-for-render",
   "version": "1.0.0",
-  "description": "Express Hello World on Render",
+  "description": "Testnet Airdrop on Render, derived from Render Expressjs Demo",
   "main": "app.js",
-  "repository": "https://github.com/render-examples/express-hello-world",
-  "author": "Render Developers",
+  "repository": "https://github.com/tgarm/airdrop-testnet",
+  "author": "tgarm",
   "license": "MIT",
   "private": false,
   "scripts": {
     "start": "node app.js"
   },
   "dependencies": {
-    "express": "^4.16.3"
+    "ethers": "^5.6.5",
+    "express": "^4.18.1"
   },
   "engines": {
     "node": ">=14"
