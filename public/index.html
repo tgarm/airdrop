@@ -3,40 +3,41 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
     </head>
-
     <body>
-        <div v-scope>
-            <div class="container">
-              <div class="box" v-if="waddr">
-                  <label class="label">Address</label>
-                  <div class="control">
-                      <input class="input" type="text" disabled v-model="waddr">
-                  </div>
-                  <div v-if="chainId=='0x1336'">
-                      <label class="label"></label>
-                      <div class="control">
-                          <button class="button is-primary" @click="airdrop">Airdrop</button>
+        <section class="section">
+            <div v-scope>
+                <div class="container">
+                  <div class="box" v-if="waddr">
+                      <div v-if="chainId=='0x1336'">
+                          <label class="label">Address</label>
+                          <div class="control">
+                              <input class="input" type="text" disabled v-model="waddr">
+                          </div>
+                          <label v-if="balance" class="label">Balance</label>
+                          <div v-if="balance" class="control">
+                              <input class="input" type="text" disabled v-model="balance">
+                          </div>
+                          <div class="control">
+                              <button class="button is-primary" @click="airdrop">Airdrop</button>
+                          </div>
+                          <div v-if="high_balance" class="control">
+                              <button class="button" @click="donate">Donate Test Coin</button>
+                          </div>
                       </div>
-                      <div v-if="high_balance" class="control">
-                          <button class="button" @click="donate">Donate Test Coin</button>
+                      <div v-else>
+                          <div class="notification is-primary">
+                              <p>Wrong network</p>
+                              <button @click="switchNet" class="button is-warning">Switch to Venidium Testnet</button>
+                          </div>
                       </div>
                   </div>
-                  <div v-else>
-                      <div class="notification is-primary">
-                          <p>Wrong network</p>
-                          <button @click="switchNet" class="button is-warning">Switch to Venidium Testnet</button>
-                      </div>
-                  </div>
-              </div>
-              <button v-else @click="connect" class="button is-primary">Connect Wallet</button>
+                  <button v-else @click="connect" class="button is-primary">Connect Wallet</button>
+                </div>
             </div>
-        </div>
-        <div>
-        </div>
+        </section>
         <script src="https://unpkg.com/petite-vue"></script>
-        <script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
         <script src='https://cdn.jsdelivr.net/npm/bignumber.js@9.0.2/bignumber.min.js'></script>
         <script>
           const ethereum = window.ethereum
@@ -58,7 +59,7 @@
                         const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.waddr, 'latest'] })
                         const bn = (new BigNumber(balance)).dividedBy(1e18)
                         this.balance = bn.toNumber()
-                        if(bn>20){
+                        if(bn>=20){
                             this.high_balance = true
                         }else{
                             this.high_balance = false
@@ -72,9 +73,7 @@
                 if(!this.initialized){
                     this.initialized = true
                     const root = this
-                    console.log('initialize')
                     ethereum.on('connect', async (cinfo)=>{
-                        console.log('connect-info', cinfo)
                         if(!root.chainId){
                             root.chainId = cinfo.chainId
                         }
@@ -147,7 +146,7 @@
             async ensureNet(){
                 let chainId = await ethereum.request({ method:'eth_chainId' })
                 if(chainId!='0x1336'){
-                    await switchNet()
+                    await this.switchNet()
                     chainId = await ethereum.request({ method:'eth_chainId' })
                 }
                 if(chainId=='0x1336'){
