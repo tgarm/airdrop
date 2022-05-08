@@ -19,6 +19,9 @@
                       <div class="control">
                           <button class="button is-primary" @click="airdrop">Airdrop</button>
                       </div>
+                      <div v-if="high_balance" class="control">
+                          <button class="button" @click="donate">Donate Test Coin</button>
+                      </div>
                   </div>
                   <div v-else>
                       <div class="notification is-primary">
@@ -30,21 +33,37 @@
               <button v-else @click="connect" class="button is-primary">Connect Wallet</button>
             </div>
         </div>
+        <div>
+        </div>
         <script src="https://unpkg.com/petite-vue"></script>
         <script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
+        <script src='https://cdn.jsdelivr.net/npm/bignumber.js@9.0.2/bignumber.min.js'></script>
         <script>
           const ethereum = window.ethereum
           PetiteVue.createApp({
             waddr: false,
+            high_balance: false,
+            balance: false,
             chainId: false,
             initialized: false,
             async connect(){
                 if (typeof ethereum !== 'undefined') {
                     await this.initialize()
-                    const user = await ethereum.request({ method:'eth_requestAccounts' })
-                    this.chainId = await ethereum.request({ method:'eth_chainId' })
-                    if(user&&user[0]){
-                        this.waddr = user[0]
+                    if(await this.ensureNet()){
+                        this.chainId = await ethereum.request({ method:'eth_chainId' })
+                        const user = await ethereum.request({ method:'eth_requestAccounts' })
+                        if(user&&user[0]){
+                            this.waddr = user[0]
+                        }
+                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.waddr, 'latest'] })
+                        const bn = (new BigNumber(balance)).dividedBy(1e18)
+                        this.balance = bn.toNumber()
+                        if(bn>20){
+                            this.high_balance = true
+                        }else{
+                            this.high_balance = false
+                        }
+                        console.log('balance', this.balance)
                     }
                     console.log('connect done')
                 }
@@ -125,6 +144,18 @@
                     }
                 }
             },
+            async ensureNet(){
+                let chainId = await ethereum.request({ method:'eth_chainId' })
+                if(chainId!='0x1336'){
+                    await switchNet()
+                    chainId = await ethereum.request({ method:'eth_chainId' })
+                }
+                if(chainId=='0x1336'){
+                    return true
+                }else{
+                    return false
+                }
+            },
             async airdrop(){
                 let xhr = new XMLHttpRequest();
                 xhr.open("POST", "/airdrop");
@@ -144,6 +175,9 @@
                     chain: this.chainId
                 }
                 xhr.send(JSON.stringify(data));
+            },
+            async donate(){
+                
             }
           }).mount()
           function connected(info){

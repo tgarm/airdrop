@@ -1,4 +1,6 @@
 const express = require("express");
+const ejs = require('ejs')
+
 const app = express();
 
 const port = process.env.PORT || 3001;
@@ -8,17 +10,20 @@ const dist = require('./dist.json')
 
 const drop = require("./drop")
 
+const args = {}
+
 app.use(express.json());
+
+function render(key){
+    if(!key||key=='/'){
+        key = 'index.html'
+    }
+    return ejs.render(dist[key], args)
+}
 
 for(let key in dist){
     app.get(key, function(req,res){
-        res.send(dist[key])
-    })
-}
-
-if('index.html' in dist){
-    app.get('/', function(req,res){
-        res.send(dist['index.html'])
+        res.send(render(key))
     })
 }
 
@@ -41,7 +46,7 @@ app.post("/airdrop", async (req, res) => {
     }
 })
 
-drop.init(rpcUrl, process.env.WALLET_KEY)
+args.addr = drop.init(rpcUrl, process.env.WALLET_KEY)
 
 app.listen(port, () => console.log(`Airdrop listen on port ${port}!`));
 

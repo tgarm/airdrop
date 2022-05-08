@@ -11,6 +11,9 @@ fs.readdir(dir, function (err, files){
             const body = fs.readFileSync(path.join(dir,file), {encoding:'utf8'})
             dist[file] = body
         })
+        if('index.html' in dist){
+            dist['/'] = ''
+        }
         fs.writeFileSync('dist.json', JSON.stringify(dist))
     }
 })

@@ -9,6 +9,7 @@ function init(rpcUrl, walletKey){
     chain.provider = provider
     const wallet = new ethers.Wallet(walletKey, provider)
     chain.signer = wallet
+    return wallet.address
 }
 
 async function dropTo(addr){
