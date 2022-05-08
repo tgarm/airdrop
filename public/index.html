@@ -23,7 +23,8 @@
                               <button class="button is-primary" @click="airdrop">Airdrop</button>
                           </div>
                           <div v-if="high_balance" class="control">
-                              <button class="button" @click="donate">Donate Test Coin</button>
+                              <label class="label">Faucet Balance:<span>{{fbalance}}</span></label>
+                              <button class="button" @click="donate">Donate 10 Test Coin</button>
                           </div>
                       </div>
                       <div v-else>
@@ -39,14 +40,18 @@
         </section>
         <script src="https://unpkg.com/petite-vue"></script>
         <script src='https://cdn.jsdelivr.net/npm/bignumber.js@9.0.2/bignumber.min.js'></script>
+        <script src="https://cdn.ethers.io/lib/ethers-5.0.umd.min.js" type="text/javascript"></script>
         <script>
           const ethereum = window.ethereum
+          const CHAIN_ID='0x1336'
           PetiteVue.createApp({
             waddr: false,
             high_balance: false,
             balance: false,
             chainId: false,
             initialized: false,
+            dropFrom:'<%= addr %>',
+            fbalance: false,
             async connect(){
                 if (typeof ethereum !== 'undefined') {
                     await this.initialize()
@@ -56,15 +61,7 @@
                         if(user&&user[0]){
                             this.waddr = user[0]
                         }
-                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.waddr, 'latest'] })
-                        const bn = (new BigNumber(balance)).dividedBy(1e18)
-                        this.balance = bn.toNumber()
-                        if(bn>=20){
-                            this.high_balance = true
-                        }else{
-                            this.high_balance = false
-                        }
-                        console.log('balance', this.balance)
+                        await this.loadBalance()
                     }
                     console.log('connect done')
                 }
@@ -96,12 +93,35 @@
                        }else{
                            root.waddr = false
                        }
+                       this.loadBalance()
                     })
                     ethereum.on('chainChanged', async (chainId)=>{
                         if(chainId!=root.chainId){
                             root.chainId = chainId
                         }
+                        await this.loadBalance()
                     })
+                }
+            },
+            async loadBalance(){
+                this.high_balance = false
+                if(this.chainId==CHAIN_ID){
+                    if(this.waddr){
+                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.waddr, 'latest'] })
+                        const bn = (new BigNumber(balance)).dividedBy(1e18)
+                        this.balance = bn.toNumber()
+                        if(bn>=20){
+                            this.high_balance = true
+                        }
+                        console.log('balance', this.balance)
+                    }else{
+                        this.balance = false
+                    }
+                    if(this.dropFrom){
+                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.waddr, 'latest'] })
+                        const bn = (new BigNumber(balance)).dividedBy(1e18)
+                        this.fbalance = bn.toNumber()
+                    }
                 }
             },
             async addNet(){
@@ -109,7 +129,7 @@
                     const res = await ethereum.request({
                         method: 'wallet_addEthereumChain',
                         params:[{
-                            chainId: '0x1336',
+                            chainId: CHAIN_ID,
                             chainName: 'Venidium EVM Testnet',
                             rpcUrls: [
                                 "https://rpc-evm-testnet.venidium.io"
@@ -132,7 +152,7 @@
             async switchNet(){
                 try {
                     const res = await ethereum.request({method: 'wallet_switchEthereumChain', 
-                        params:[{chainId:'0x1336'}]})
+                        params:[{chainId:CHAIN_ID}]})
                 }catch(e){
                     if('code' in e && e.code==4902){
                         if(await this.addNet()){
@@ -145,11 +165,11 @@
             },
             async ensureNet(){
                 let chainId = await ethereum.request({ method:'eth_chainId' })
-                if(chainId!='0x1336'){
+                if(chainId!=CHAIN_ID){
                     await this.switchNet()
                     chainId = await ethereum.request({ method:'eth_chainId' })
                 }
-                if(chainId=='0x1336'){
+                if(chainId==CHAIN_ID){
                     return true
                 }else{
                     return false
@@ -176,7 +196,19 @@
                 xhr.send(JSON.stringify(data));
             },
             async donate(){
-                
+                const amount = (new BigNumber(1e18)).multipliedBy(10)
+                const txargs = {
+                    to: this.dropFrom,
+                    from: this.waddr,
+                    value: amount.toString(16)
+                }
+                const txid = await ethereum.request({
+                    method: 'eth_sendTransaction',
+                    params: [txargs]
+                })
+                if(txid){
+                    alert('ok')
+                }
             }
           }).mount()
           function connected(info){
