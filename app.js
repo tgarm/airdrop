@@ -4,10 +4,23 @@ const app = express();
 const port = process.env.PORT || 3001;
 const rpcUrl = process.env.RPC_URL || "https://rpc-evm-testnet.venidium.io/";
 
+const dist = require('./dist.json')
+
 const drop = require("./drop")
 
-app.use(express.static('public'))
 app.use(express.json());
+
+for(let key in dist){
+    app.get(key, function(req,res){
+        res.send(dist[key])
+    })
+}
+
+if('index.html' in dist){
+    app.get('/', function(req,res){
+        res.send(dist['index.html'])
+    })
+}
 
 app.post("/airdrop", async (req, res) => {
     console.log('req', req.body.addr, req.body.chain)

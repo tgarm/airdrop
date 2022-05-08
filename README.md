@@ -5,6 +5,11 @@ Only drop necessary amount (current 0.01) when requester does not have enough ba
 
 ## Deployment
 
+* Compile static files first:
+```
+node build.js
+```
+
 Intended to be deployed and run on render.com
 
 Create a new web service with the following values:
