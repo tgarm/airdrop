@@ -131,6 +131,12 @@
                 xhr.setRequestHeader("Accept", "application/json");
                 xhr.setRequestHeader("Content-Type", "application/json");
                 xhr.onload = () => {
+                    const res = JSON.parse(xhr.responseText)
+                    if(res.success){
+                        alert('ok')
+                    }else{
+                        alert(res.reason)
+                    }
                     console.log(xhr.responseText);
                 }
                 const data = {
