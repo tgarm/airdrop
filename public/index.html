@@ -185,7 +185,13 @@
                     if(res.success){
                         alert('ok')
                     }else{
-                        alert(res.reason)
+                        switch(res.reason){
+                            case 'balance':
+                                alert('You already have more than 0.01 XVM')
+                                break
+                            default:
+                                alert(res.reason)
+                        }
                     }
                     console.log(xhr.responseText);
                 }
