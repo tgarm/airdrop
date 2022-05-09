@@ -125,7 +125,7 @@
                         this.balance = false
                     }
                     if(this.dropFrom){
-                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.waddr, 'latest'] })
+                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.dropFrom, 'latest'] })
                         const bn = (new BigNumber(balance)).dividedBy(1e18)
                         this.fbalance = bn.toNumber()
                     }
