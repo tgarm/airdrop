@@ -40,6 +40,7 @@
         </section>
         <script src="https://unpkg.com/petite-vue"></script>
         <script src='https://cdn.jsdelivr.net/npm/bignumber.js@9.0.2/bignumber.min.js'></script>
+        <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://cdn.ethers.io/lib/ethers-5.0.umd.min.js" type="text/javascript"></script>
         <script>
           const ethereum = window.ethereum
@@ -183,11 +184,17 @@
                 xhr.onload = () => {
                     const res = JSON.parse(xhr.responseText)
                     if(res.success){
-                        alert('ok')
+                        Swal.fire({
+                            title: 'Done',
+                            text: '0.01 XVM has been sent to your wallet'
+                        })
                     }else{
                         switch(res.reason){
                             case 'balance':
-                                alert('You already have more than 0.01 XVM')
+                                Swal.fire({
+                                    title: 'Failed',
+                                    text: 'You already have more than 0.01 XVM'
+                                })
                                 break
                             default:
                                 alert(res.reason)
