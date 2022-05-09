@@ -22,7 +22,10 @@ function render(key){
 }
 
 for(let key in dist){
-    app.get(key, function(req,res){
+    app.get(`/${key}`, function(req,res){
+        if(key.endsWith('.json')){
+            res.set('Content-Type','application/json')
+        }
         res.send(render(key))
     })
 }

@@ -9,6 +9,7 @@
         <section class="section">
             <div v-scope>
                 <div class="container">
+                  <h1 class='title'>Venidium Testnet Faucet/Airdrop</h1>
                   <div class="box" v-if="waddr">
                       <div v-if="chainId=='0x1336'">
                           <label class="label">Address</label>
@@ -20,11 +21,11 @@
                               <input class="input" type="text" disabled v-model="balance">
                           </div>
                           <div class="control">
-                              <button class="button is-primary" @click="airdrop">Airdrop</button>
+                              <button :class="loading?'is-loading':''" class="button is-primary" @click="airdrop">Airdrop</button>
                           </div>
                           <div v-if="high_balance" class="control">
                               <label class="label">Faucet Balance:<span>{{fbalance}}</span></label>
-                              <button class="button" @click="donate">Donate 10 Test Coin</button>
+                              <button :class="loading?'is-loading':''" class="button" @click="donate">Donate 10 Test Coin</button>
                           </div>
                       </div>
                       <div v-else>
@@ -42,8 +43,11 @@
         <script src='https://cdn.jsdelivr.net/npm/bignumber.js@9.0.2/bignumber.min.js'></script>
         <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://cdn.ethers.io/lib/ethers-5.0.umd.min.js" type="text/javascript"></script>
+        <script src="/airdrop-abi.json" type="text/javascript"></script>
         <script>
           const ethereum = window.ethereum
+          const provider = new ethers.providers.Web3Provider(ethereum, "any")
+          const airdrop_ctr = new ethers.Contract('0xC575a07d8490154B4B544e188aE2Ce3192e90Ce2',airdrop_abi,provider.getSigner())
           const CHAIN_ID='0x1336'
           PetiteVue.createApp({
             waddr: false,
@@ -53,7 +57,9 @@
             initialized: false,
             dropFrom:'<%= addr %>',
             fbalance: false,
+            loading: false,
             async connect(){
+                this.loading = true
                 if (typeof ethereum !== 'undefined') {
                     await this.initialize()
                     if(await this.ensureNet()){
@@ -64,8 +70,8 @@
                         }
                         await this.loadBalance()
                     }
-                    console.log('connect done')
                 }
+                this.loading = false
             },
             async initialize(){
                 if(!this.initialized){
@@ -177,36 +183,69 @@
                 }
             },
             async airdrop(){
-                let xhr = new XMLHttpRequest();
-                xhr.open("POST", "/airdrop");
-                xhr.setRequestHeader("Accept", "application/json");
-                xhr.setRequestHeader("Content-Type", "application/json");
-                xhr.onload = () => {
-                    const res = JSON.parse(xhr.responseText)
-                    if(res.success){
-                        Swal.fire({
-                            title: 'Done',
-                            text: '0.01 XVM has been sent to your wallet'
-                        })
+                if(this.balance>=0.01){
+                    const claimable = await airdrop_ctr.claimable()
+                    if(claimable.gt(0)){
+                        const nw = await airdrop_ctr.needWait()
+                        if(nw.gt(0)){
+                            Swal.fire({
+                                title: 'Fail',
+                                text: `Please wait for ${nw.toNumber()} seconds for cooldown`,
+                            })
+                        }else{
+                            const res = await airdrop_ctr.claim()
+                            if('hash' in res){
+                                this.loading = true
+                                await provider.waitForTransaction(res.hash)
+                                await this.loadBalance()
+                                this.loading = false
+                            }
+                        }
                     }else{
-                        switch(res.reason){
-                            case 'balance':
-                                Swal.fire({
-                                    title: 'Failed',
-                                    text: 'You already have more than 0.01 XVM'
-                                })
-                                break
-                            default:
-                                alert(res.reason)
+                        Swal.fire({
+                            title: 'Fail',
+                            text: 'Nothing to claim, maybe you have got quite a lot XVM, or this faucet is out of fund'
+                        })
+                    }
+                }else{
+                    this.loading = true
+                    let xhr = new XMLHttpRequest();
+                    xhr.open("POST", "/airdrop");
+                    xhr.setRequestHeader("Accept", "application/json");
+                    xhr.setRequestHeader("Content-Type", "application/json");
+                    xhr.onload = async () => {
+                        const res = JSON.parse(xhr.responseText)
+                        if(res.success){
+                            await provider.waitForTransaction(res.txid)
+                            await this.loadBalance()
+                            this.loading = false
+                            Swal.fire({
+                                title: 'Done',
+                                text: '0.01 XVM has been sent to your wallet'
+                            })
+                        }else{
+                            this.loading = false
+                            switch(res.reason){
+                                case 'balance':
+                                    Swal.fire({
+                                        title: 'Failed',
+                                        text: 'You already have more than 0.01 XVM'
+                                    })
+                                    break
+                                default:
+                                    Swal.fire({
+                                        title: 'Failed',
+                                        text: `Reason: ${res.reason}`
+                                    })
+                            }
                         }
                     }
-                    console.log(xhr.responseText);
+                    const data = {
+                        addr: this.waddr,
+                        chain: this.chainId
+                    }
+                    xhr.send(JSON.stringify(data));
                 }
-                const data = {
-                    addr: this.waddr,
-                    chain: this.chainId
-                }
-                xhr.send(JSON.stringify(data));
             },
             async donate(){
                 const amount = (new BigNumber(1e18)).multipliedBy(10)
@@ -219,15 +258,20 @@
                     method: 'eth_sendTransaction',
                     params: [txargs]
                 })
+                this.loading = true
                 if(txid){
-                    alert('ok')
+                    await provider.waitForTransaction(txid)
+                    await this.loadBalance()
+                    this.loading = false
+                    Swal.fire({
+                        title: 'Done',
+                        text: 'Thank you for your kind support!'
+                    })
+                }else{
+                    this.loading = false
                 }
             }
           }).mount()
-          function connected(info){
-              console.log('connect info', info)
-          }
-          ethereum.on('connect', connected)
         </script>
     </body>
 </html>
