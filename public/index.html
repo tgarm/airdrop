@@ -1,71 +1,97 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
-    </head>
-    <body>
-        <section class="section">
-            <div v-scope>
-                <div class="container">
-                  <h1 class='title'>Venidium Testnet Faucet/Airdrop</h1>
-                  <div class="box" v-if="waddr">
-                      <div v-if="chainId=='0x1336'">
-                          <label class="label">Address</label>
-                          <div class="control">
-                              <input class="input" type="text" disabled v-model="waddr">
-                          </div>
-                          <label v-if="balance" class="label">Balance</label>
-                          <div v-if="balance" class="control">
-                              <input class="input" type="text" disabled v-model="balance">
-                          </div>
-                          <div class="control">
-                              <button :class="loading?'is-loading':''" class="button is-primary" @click="airdrop">Airdrop</button>
-                          </div>
-                          <div v-if="high_balance" class="control">
-                              <label class="label">Faucet Balance:<span>{{fbalance}}</span></label>
-                              <button :class="loading?'is-loading':''" class="button" @click="donate">Donate 10 Test Coin</button>
-                          </div>
-                      </div>
-                      <div v-else>
-                          <div class="notification is-primary">
-                              <p>Wrong network</p>
-                              <button @click="switchNet" class="button is-warning">Switch to Venidium Testnet</button>
-                          </div>
-                      </div>
-                  </div>
-                  <button v-else @click="connect" class="button is-primary">Connect Wallet</button>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+</head>
+
+<body>
+    <section class="section">
+        <div v-scope>
+            <div class="container">
+                <h1 class='title'>Venidium Testnet Faucet/Airdrop</h1>
+                <div class="box" v-if="waddr">
+                    <div v-if="chainId=='0x1336'">
+                        <label class="label">Address</label>
+                        <div class="control">
+                            <input class="input" type="text" disabled v-model="waddr">
+                        </div>
+                        <label v-if="balance" class="label">Balance</label>
+                        <div v-if="balance" class="control">
+                            <input class="input" type="text" disabled v-model="balance">
+                        </div>
+                        <div class="control">
+                            <button :class="loading?'is-loading':''" class="button is-primary"
+                                @click="airdrop">Airdrop</button>
+                        </div>
+                        <div v-if="high_balance" class="control">
+                            <label class="label">Faucet Balance:<span>{{fbalance}}</span></label>
+                            <button :class="loading?'is-loading':''" class="button" @click="donate">Donate 10 Test
+                                Coin</button>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <div class="notification is-primary">
+                            <p>Wrong network</p>
+                            <button @click="switchNet" class="button is-warning">Switch to Venidium Testnet</button>
+                        </div>
+                    </div>
                 </div>
+                <button v-else @click="connect" class="button is-primary">Connect Wallet</button>
             </div>
-        </section>
-        <script src="https://unpkg.com/petite-vue"></script>
-        <script src='https://cdn.jsdelivr.net/npm/bignumber.js@9.0.2/bignumber.min.js'></script>
-        <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        <script src="https://cdn.ethers.io/lib/ethers-5.0.umd.min.js" type="text/javascript"></script>
-        <script src="/airdrop-abi.json" type="text/javascript"></script>
-        <script>
-          const ethereum = window.ethereum
-          const provider = new ethers.providers.Web3Provider(ethereum, "any")
-          const airdrop_ctr = new ethers.Contract('0xC575a07d8490154B4B544e188aE2Ce3192e90Ce2',airdrop_abi,provider.getSigner())
-          const CHAIN_ID='0x1336'
-          PetiteVue.createApp({
+        </div>
+    </section>
+    <script src="https://unpkg.com/petite-vue"></script>
+    <script src='https://cdn.jsdelivr.net/npm/bignumber.js@9.0.2/bignumber.min.js'></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.ethers.io/lib/ethers-5.0.umd.min.js" type="text/javascript"></script>
+    <script src="/airdrop-abi.json" type="text/javascript"></script>
+    <script>
+        const ethereum = window.ethereum
+        const provider = new ethers.providers.Web3Provider(ethereum, "any")
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms))
+        }
+        async function waitTx(txid) {
+            while (true) {
+                const res = await provider.getTransaction(txid)
+                if (!res) {
+                    const aa = await sleep(2 * 1000)
+                    console.log('sleep', aa)
+                } else {
+                    console.log('wait-tx res', res)
+                    break
+                }
+            }
+        }
+
+        const airdrop_ctr = new ethers.Contract('0xC575a07d8490154B4B544e188aE2Ce3192e90Ce2', airdrop_abi,
+            provider.getSigner())
+        const CHAIN_ID = '0x1336'
+        PetiteVue.createApp({
             waddr: false,
             high_balance: false,
             balance: false,
             chainId: false,
             initialized: false,
-            dropFrom:'<%= addr %>',
+            dropFrom: '<%= addr %>',
             fbalance: false,
             loading: false,
-            async connect(){
+            async connect() {
                 this.loading = true
                 if (typeof ethereum !== 'undefined') {
                     await this.initialize()
-                    if(await this.ensureNet()){
-                        this.chainId = await ethereum.request({ method:'eth_chainId' })
-                        const user = await ethereum.request({ method:'eth_requestAccounts' })
-                        if(user&&user[0]){
+                    if (await this.ensureNet()) {
+                        this.chainId = await ethereum.request({
+                            method: 'eth_chainId'
+                        })
+                        const user = await ethereum.request({
+                            method: 'eth_requestAccounts'
+                        })
+                        if (user && user[0]) {
                             this.waddr = user[0]
                         }
                         await this.loadBalance()
@@ -73,141 +99,158 @@
                 }
                 this.loading = false
             },
-            async initialize(){
-                if(!this.initialized){
+            async initialize() {
+                if (!this.initialized) {
                     this.initialized = true
                     const root = this
-                    ethereum.on('connect', async (cinfo)=>{
-                        if(!root.chainId){
+                    ethereum.on('connect', async (cinfo) => {
+                        if (!root.chainId) {
                             root.chainId = cinfo.chainId
                         }
-                        if(!root.waddr){
-                            const user = await ethereum.request({ method:'eth_requestAccounts' })
-                            if(user&&user[0]){
+                        if (!root.waddr) {
+                            const user = await ethereum.request({
+                                method: 'eth_requestAccounts'
+                            })
+                            if (user && user[0]) {
                                 root.waddr = user[0]
                             }
                         }
                     })
-                    ethereum.on('disconnect', ()=>{
+                    ethereum.on('disconnect', () => {
                         console.log('disconnected')
                         root.waddr = false
                         root.chainId = false
                     })
- 
-                    ethereum.on('accountsChanged', (accounts)=>{
-                       if(accounts.length>0){
-                           root.waddr = accounts[0]
-                       }else{
-                           root.waddr = false
-                       }
-                       this.loadBalance()
+
+                    ethereum.on('accountsChanged', (accounts) => {
+                        if (accounts.length > 0) {
+                            root.waddr = accounts[0]
+                        } else {
+                            root.waddr = false
+                        }
+                        this.loadBalance()
                     })
-                    ethereum.on('chainChanged', async (chainId)=>{
-                        if(chainId!=root.chainId){
+                    ethereum.on('chainChanged', async (chainId) => {
+                        if (chainId != root.chainId) {
                             root.chainId = chainId
                         }
                         await this.loadBalance()
                     })
                 }
             },
-            async loadBalance(){
+            async loadBalance() {
                 this.high_balance = false
-                if(this.chainId==CHAIN_ID){
-                    if(this.waddr){
-                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.waddr, 'latest'] })
+                if (this.chainId == CHAIN_ID) {
+                    if (this.waddr) {
+                        const balance = await ethereum.request({
+                            method: 'eth_getBalance',
+                            params: [this.waddr, 'latest']
+                        })
                         const bn = (new BigNumber(balance)).dividedBy(1e18)
                         this.balance = bn.toNumber()
-                        if(bn>=20){
+                        if (bn >= 20) {
                             this.high_balance = true
                         }
                         console.log('balance', this.balance)
-                    }else{
+                    } else {
                         this.balance = false
                     }
-                    if(this.dropFrom){
-                        const balance = await ethereum.request({ method: 'eth_getBalance', params: [this.dropFrom, 'latest'] })
+                    if (this.dropFrom) {
+                        const balance = await ethereum.request({
+                            method: 'eth_getBalance',
+                            params: [this.dropFrom, 'latest']
+                        })
                         const bn = (new BigNumber(balance)).dividedBy(1e18)
                         this.fbalance = bn.toNumber()
                     }
                 }
             },
-            async addNet(){
+            async addNet() {
                 try {
                     const res = await ethereum.request({
                         method: 'wallet_addEthereumChain',
-                        params:[{
+                        params: [{
                             chainId: CHAIN_ID,
                             chainName: 'Venidium EVM Testnet',
                             rpcUrls: [
                                 "https://rpc-evm-testnet.venidium.io"
                             ],
-                            nativeCurrency:{
+                            nativeCurrency: {
                                 name: "Venidium",
                                 symbol: "XVM",
                                 decimals: 18
                             },
-                            blockExplorerUrls:[
+                            blockExplorerUrls: [
                                 "https://evm-testnet.venidiumexplorer.com"
                             ]
                         }]
                     })
-                }catch(e){
+                } catch (e) {
                     return false
                 }
                 return true
             },
-            async switchNet(){
+            async switchNet() {
                 try {
-                    const res = await ethereum.request({method: 'wallet_switchEthereumChain', 
-                        params:[{chainId:CHAIN_ID}]})
-                }catch(e){
-                    if('code' in e && e.code==4902){
-                        if(await this.addNet()){
+                    const res = await ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{
+                            chainId: CHAIN_ID
+                        }]
+                    })
+                } catch (e) {
+                    if ('code' in e && e.code == 4902) {
+                        if (await this.addNet()) {
                             await this.switchNet()
                         }
-                    }else{
+                    } else {
                         console.log('error', e)
                     }
                 }
             },
-            async ensureNet(){
-                let chainId = await ethereum.request({ method:'eth_chainId' })
-                if(chainId!=CHAIN_ID){
+            async ensureNet() {
+                let chainId = await ethereum.request({
+                    method: 'eth_chainId'
+                })
+                if (chainId != CHAIN_ID) {
                     await this.switchNet()
-                    chainId = await ethereum.request({ method:'eth_chainId' })
+                    chainId = await ethereum.request({
+                        method: 'eth_chainId'
+                    })
                 }
-                if(chainId==CHAIN_ID){
+                if (chainId == CHAIN_ID) {
                     return true
-                }else{
+                } else {
                     return false
                 }
             },
-            async airdrop(){
-                if(this.balance>=0.01){
+            async airdrop() {
+                await this.loadBalance()
+                if (this.balance >= 0.01) {
                     const claimable = await airdrop_ctr.claimable()
-                    if(claimable.gt(0)){
+                    if (claimable.gt(0)) {
                         const nw = await airdrop_ctr.needWait()
-                        if(nw.gt(0)){
+                        if (nw.gt(0)) {
                             Swal.fire({
                                 title: 'Fail',
                                 text: `Please wait for ${nw.toNumber()} seconds for cooldown`,
                             })
-                        }else{
+                        } else {
                             const res = await airdrop_ctr.claim()
-                            if('hash' in res){
+                            if ('hash' in res) {
                                 this.loading = true
-                                await provider.waitForTransaction(res.hash)
+                                await waitTx(res.hash)
                                 await this.loadBalance()
                                 this.loading = false
                             }
                         }
-                    }else{
+                    } else {
                         Swal.fire({
                             title: 'Fail',
                             text: 'Nothing to claim, maybe you have got quite a lot XVM, or this faucet is out of fund'
                         })
                     }
-                }else{
+                } else {
                     this.loading = true
                     let xhr = new XMLHttpRequest();
                     xhr.open("POST", "/airdrop");
@@ -215,17 +258,17 @@
                     xhr.setRequestHeader("Content-Type", "application/json");
                     xhr.onload = async () => {
                         const res = JSON.parse(xhr.responseText)
-                        if(res.success){
-                            await provider.waitForTransaction(res.txid)
+                        if (res.success) {
+                            await waitTx(res.txid)
                             await this.loadBalance()
                             this.loading = false
                             Swal.fire({
                                 title: 'Done',
                                 text: '0.01 XVM has been sent to your wallet'
                             })
-                        }else{
+                        } else {
                             this.loading = false
-                            switch(res.reason){
+                            switch (res.reason) {
                                 case 'balance':
                                     Swal.fire({
                                         title: 'Failed',
@@ -247,7 +290,7 @@
                     xhr.send(JSON.stringify(data));
                 }
             },
-            async donate(){
+            async donate() {
                 const amount = (new BigNumber(1e18)).multipliedBy(10)
                 const txargs = {
                     to: this.dropFrom,
@@ -259,19 +302,20 @@
                     params: [txargs]
                 })
                 this.loading = true
-                if(txid){
-                    await provider.waitForTransaction(txid)
+                if (txid) {
+                    await waitTx(txid)
                     await this.loadBalance()
                     this.loading = false
                     Swal.fire({
                         title: 'Done',
                         text: 'Thank you for your kind support!'
                     })
-                }else{
+                } else {
                     this.loading = false
                 }
             }
-          }).mount()
-        </script>
-    </body>
+        }).mount()
+    </script>
+</body>
+
 </html>
